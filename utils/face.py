@@ -1,4 +1,7 @@
 import cv2
+import os
+import pickle
+import numpy as np
 from PyQt5.QtCore import QThread
 from copy import deepcopy
 import face_recognition
@@ -38,3 +41,47 @@ class detectionThread(QThread):
     def run(self):
         self.detp.start()
         self.detp.join()
+
+
+class compareThread(QThread):
+
+    def __init__(self, widget):
+        super().__init__()
+
+        self.related_widget = widget
+
+    def run(self):
+        saved_faces = os.listdir('./data')
+        saved_faces = [face for face in saved_faces if face[-4:] == '.pkl']
+        saved_names = []
+        saved_encodings = []
+        if len(saved_faces) == 0:
+            return
+
+        for face in saved_faces:
+            with open('./data/' + face, 'rb') as fo:
+                data = pickle.load(fo)
+                for encoding in data['encodings']:
+                    saved_names.append(data['name'])
+                    saved_encodings.append(encoding)
+        
+        target_face_encodings = self.related_widget.current_faces['encodings']
+        paired_face = []
+        for idx, encoding in enumerate(target_face_encodings):
+            scores = face_recognition.face_distance(saved_encodings, encoding)
+            pair_idx = np.argmax(scores)
+            if scores[pair_idx] >= 0.6:
+                pair_name = 'Unpaired'
+            else:
+                pair_name = saved_names[pair_idx]
+            
+            self.related_widget.current_faces['name'][idx] = pair_name
+            paired_face.append(pair_name)
+
+        if len(paired_face):
+            self.related_widget.line2.setText(paired_face[0])
+        else:
+            self.related_widget.line2.setText('Unpaired')
+
+
+            

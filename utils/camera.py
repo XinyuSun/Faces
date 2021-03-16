@@ -51,6 +51,10 @@ class cameraThread(QThread):
             if not self.det_queue.empty():
                 self.dets = self.det_queue.get()
                 self.related_widget.line1.setText('{}'.format(self.dets['locs']))
+                self.related_widget.current_faces['locs'] = self.dets['locs']
+                self.related_widget.current_faces['encodings'] = self.dets['encodings']
+                self.related_widget.current_faces['name'] = ['None' for i in range(len(self.dets['locs']))]
+                self.related_widget.found_face_signal.emit()
 
             cv2.waitKey(1)
     
