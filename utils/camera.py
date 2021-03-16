@@ -41,16 +41,16 @@ class cameraThread(QThread):
             if self.img_queue.empty():
                 self.frame = deepcopy(frame)
                 self.img_queue.put(self.frame)
-                self.related_widget.line.setText('put image')
+                self.related_widget.line1.setText('put image')
 
-            # feed
+            # feed the detection process
             if not self.exit_signal_queue.full():
                 self.exit_signal_queue.put(-1, block=False)
 
             # get detection results
             if not self.det_queue.empty():
-                dets = self.det_queue.get()
-                self.related_widget.line.setText('{}'.format(dets['locs']))
+                self.dets = self.det_queue.get()
+                self.related_widget.line1.setText('{}'.format(self.dets['locs']))
 
             cv2.waitKey(1)
     

@@ -1,10 +1,13 @@
 import sys
 import cv2
+import os
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QLineEdit
 from PyQt5.QtGui import QImage, QPixmap, QIcon
 from PyQt5 import QtCore
-from utils.camera import cameraThread, detectionThread
+from utils.camera import cameraThread
+from utils.face import detectionThread
+import pickle
 
 
 class uiWindow(QWidget):
@@ -31,14 +34,20 @@ class uiWindow(QWidget):
         self.button2.setText('quit')
         self.button2.setGeometry(10+80+10, 10+720+10, 80, 30)
 
-        self.line = QLineEdit(self)
-        self.line.setGeometry(10+80+10+80+10, 10+720+15, 160, 20)
-        self.line.setText('Hello')
+        self.line1 = QLineEdit(self)
+        self.line1.setGeometry(10+80+10+80+10, 10+720+15, 160, 20)
+        self.line1.setText('Hello')
+        self.line1.setReadOnly(True)
+
+        self.line2 = QLineEdit(self)
+        self.line2.setGeometry(10+80+10+80+10+160+10, 10+720+15, 160, 20)
+        self.line2.setText('Input')
 
         # signal
         self.save_face_signal = QtCore.pyqtSignal()
 
         # connection
+        self.button1.clicked.connect(self.saveFace)
         self.button2.clicked.connect(self.quit)
 
         # thread
@@ -63,6 +72,17 @@ class uiWindow(QWidget):
         else:
             self.camera_thread.close()
             self.close()
+
+    def saveFace(self):
+        if len(self.camera_thread.dets) > 0:
+            encodings = self.camera_thread.dets['encodings']
+            name = self.line2.text()
+            savedict = {'name': name, 'encodings': encodings}
+            if not os.path.exists('./data'):
+                os.makedirs('./data')
+            
+            with open(f'./data/{name}.pkl', 'wb') as fo:
+                pickle.dump(savedict, fo)
 
     def quit(self):
         self.setStreamer(False)

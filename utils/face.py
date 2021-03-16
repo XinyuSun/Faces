@@ -16,7 +16,8 @@ def detection(img_queue, det_queue, exit_signal_queue):
         if not img_queue.empty():
             cam_frame = img_queue.get()
             locs = face_recognition.face_locations(cam_frame)
-            det_queue.put({'locs': locs})
+            encodings = face_recognition.face_encodings(cam_frame, locs)
+            det_queue.put({'locs': locs, 'encodings': encodings})
         else:
             cv2.waitKey(100)
 
