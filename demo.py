@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from utils.ui import uiWindow
+from ui import uiWindow
 
 
 if __name__ == '__main__':

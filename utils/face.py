@@ -70,18 +70,22 @@ class compareThread(QThread):
         for idx, encoding in enumerate(target_face_encodings):
             scores = face_recognition.face_distance(saved_encodings, encoding)
             pair_idx = np.argmax(scores)
-            if scores[pair_idx] >= 0.6:
+            pair_score = scores[pair_idx]
+            if pair_score >= 0.6:
                 pair_name = 'Unpaired'
             else:
                 pair_name = saved_names[pair_idx]
             
-            self.related_widget.current_faces['name'][idx] = pair_name
+            self.related_widget.current_faces['names'][idx] = pair_name
+            self.related_widget.current_faces['scores'][idx] = pair_score
             paired_face.append(pair_name)
 
         if len(paired_face):
-            self.related_widget.line2.setText(paired_face[0])
+            self.related_widget.line1.setText(paired_face[0])
         else:
-            self.related_widget.line2.setText('Unpaired')
+            self.related_widget.line1.setText('Unpaired')
+
+        self.related_widget.update_results_signal.emit()
 
 
             
