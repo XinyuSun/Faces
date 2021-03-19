@@ -277,6 +277,16 @@ QLabel:hover{
      <cursorShape>IBeamCursor</cursorShape>
     </property>
    </widget>
+   <widget class="QLineEdit" name="line2">
+    <property name="geometry">
+     <rect>
+      <x>1110</x>
+      <y>560</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="enabled">

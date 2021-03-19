@@ -3,10 +3,12 @@ import os
 import pickle
 import numpy as np
 from PyQt5.QtCore import QThread
+from PyQt5.QtGui import QImage, QPixmap
 from copy import deepcopy
 import face_recognition
 from multiprocessing import Process, Queue, Manager
 from PyQt5 import QtCore
+import time
 
 
 def detection(img_queue, det_queue, exit_signal_queue):
@@ -55,37 +57,97 @@ class compareThread(QThread):
         saved_faces = [face for face in saved_faces if face[-4:] == '.pkl']
         saved_names = []
         saved_encodings = []
-        if len(saved_faces) == 0:
-            return
-
-        for face in saved_faces:
-            with open('./data/' + face, 'rb') as fo:
-                data = pickle.load(fo)
-                for encoding in data['encodings']:
-                    saved_names.append(data['name'])
-                    saved_encodings.append(encoding)
-        
-        target_face_encodings = self.related_widget.current_faces['encodings']
         paired_face = []
-        for idx, encoding in enumerate(target_face_encodings):
-            scores = face_recognition.face_distance(saved_encodings, encoding)
-            pair_idx = np.argmax(scores)
-            pair_score = scores[pair_idx]
-            if pair_score >= 0.6:
-                pair_name = 'Unpaired'
-            else:
-                pair_name = saved_names[pair_idx]
-            
-            self.related_widget.current_faces['names'][idx] = pair_name
-            self.related_widget.current_faces['scores'][idx] = pair_score
-            paired_face.append(pair_name)
+        target_face_encodings = self.related_widget.current_faces['encodings']
 
+        if len(saved_faces):
+            for face in saved_faces:
+                with open('./data/' + face, 'rb') as fo:
+                    data = pickle.load(fo)
+                    for encoding in data['encodings']:
+                        saved_names.append(data['name'])
+                        saved_encodings.append(encoding)
+            
+            for idx, encoding in enumerate(target_face_encodings):
+                scores = face_recognition.face_distance(saved_encodings, encoding)
+                pair_idx = np.argmax(scores)
+                pair_score = scores[pair_idx]
+                if pair_score >= 0.6:
+                    pair_name = 'Unpaired'
+                else:
+                    pair_name = saved_names[pair_idx]
+                
+                self.related_widget.current_faces['names'][idx] = pair_name
+                self.related_widget.current_faces['scores'][idx] = pair_score
+                paired_face.append(pair_name)
+        else:
+            self.related_widget.current_faces['names'] = ['Unpaired' for i in range(len(target_face_encodings))]
+            self.related_widget.current_faces['scores'] = [10.0 for i in range(len(target_face_encodings))]
+
+        '''
         if len(paired_face):
             self.related_widget.line1.setText(paired_face[0])
         else:
             self.related_widget.line1.setText('Unpaired')
+        '''
 
         self.related_widget.update_results_signal.emit()
 
 
-            
+class showThread(QThread):
+    
+    def __init__(self, widget):
+        super().__init__()
+
+        self.related_widget = widget
+
+    def run(self):
+        current_faces_dict = self.related_widget.current_faces
+        name_list = [face['name'] for face in self.related_widget.cache_faces]
+        encoding_list = [face['encoding'] for face in self.related_widget.cache_faces]
+
+        for face_idx in range(len(current_faces_dict['names'])):
+
+            t,r,b,l = current_faces_dict['locs'][face_idx]
+
+            cu_face = {'name': current_faces_dict['names'][face_idx],
+                       'loc': current_faces_dict['locs'][face_idx],
+                       'encoding': current_faces_dict['encodings'][face_idx],
+                       'roi': deepcopy(self.related_widget.camera_thread.frame)[t:b,l:r,:],
+                       'time': time.time()}
+
+            store_face_sig = True
+
+            if cu_face['name'] in name_list and cu_face['name'] != 'Unpaired':
+                continue
+            elif len(encoding_list):
+                dist = face_recognition.face_distance(cu_face['encoding'], encoding_list)
+                if dist.min() < 0.6:
+                    store_face_sig = False
+
+            if store_face_sig:
+                self.related_widget.cache_faces.append(cu_face)
+
+        # self.related_widget.line2.setText('{} face'.format(len(self.related_widget.cache_faces)))
+
+        # kick out of queue
+        for idx, face in enumerate(self.related_widget.cache_faces):
+            # time out
+            if time.time() - face['time'] > 5.0:
+                self.related_widget.cache_faces.remove(self.related_widget.cache_faces[idx])
+
+        while len(self.related_widget.cache_faces) > 4:
+            self.related_widget.cache_faces.remove(self.related_widget.cache_faces[0])
+
+        for idx, face in enumerate(self.related_widget.cache_faces):
+            roi = cv2.resize(face['roi'], (100, 100))
+            w,h,d = roi.shape
+            qimg = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+            qimg = QImage(qimg.data, w, h, w * d, QImage.Format_RGB888)
+            self.related_widget.roiLabel[idx].setPixmap(QPixmap.fromImage(qimg))
+            self.related_widget.names[idx].setText(face['name'])
+
+        # fill the label with png file
+        for idx in range(len(self.related_widget.cache_faces), 4):
+            self.related_widget.resetImgLabel(self.related_widget.roiLabel[idx])
+            self.related_widget.names[idx].setText('User {}'.format(idx + 1))
