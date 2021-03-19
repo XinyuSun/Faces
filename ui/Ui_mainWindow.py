@@ -19,7 +19,7 @@ class Ui_MainWindow(object):
         MainWindow.setMaximumSize(QtCore.QSize(1230, 763))
         MainWindow.setMouseTracking(False)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("/Users/sunxinyu/Workspace/face/ui/resources/icon1.ico"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("/Users/sunxinyu/Workspace/face/ui/resources/icon1.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWindow.setWindowIcon(icon)
         MainWindow.setStyleSheet("")
         self.centralwidget = QtWidgets.QWidget(MainWindow)

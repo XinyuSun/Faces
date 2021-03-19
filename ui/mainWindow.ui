@@ -30,7 +30,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>resources/icon1.ico</normaloff>resources/icon1.ico</iconset>
+    <normaloff>resources/icon1.png</normaloff>resources/icon1.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true"/>

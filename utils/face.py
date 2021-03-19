@@ -10,6 +10,7 @@ from multiprocessing import Process, Queue, Manager
 from PyQt5 import QtCore
 import time
 
+face_tolerance = 0.45
 
 def detection(img_queue, det_queue, exit_signal_queue):
     while True:
@@ -21,7 +22,7 @@ def detection(img_queue, det_queue, exit_signal_queue):
         if not img_queue.empty():
             cam_frame = img_queue.get()
             locs = face_recognition.face_locations(cam_frame)
-            encodings = face_recognition.face_encodings(cam_frame, locs)
+            encodings = face_recognition.face_encodings(cam_frame, locs, 5, "large")
             det_queue.put({'locs': locs, 'encodings': encodings})
         else:
             cv2.waitKey(100)
@@ -67,12 +68,15 @@ class compareThread(QThread):
                     for encoding in data['encodings']:
                         saved_names.append(data['name'])
                         saved_encodings.append(encoding)
+
+            print(saved_names)
             
             for idx, encoding in enumerate(target_face_encodings):
                 scores = face_recognition.face_distance(saved_encodings, encoding)
-                pair_idx = np.argmax(scores)
+                print(scores)
+                pair_idx = np.argmin(scores)
                 pair_score = scores[pair_idx]
-                if pair_score >= 0.6:
+                if pair_score >= face_tolerance:
                     pair_name = 'Unpaired'
                 else:
                     pair_name = saved_names[pair_idx]
@@ -82,13 +86,13 @@ class compareThread(QThread):
                 paired_face.append(pair_name)
         else:
             self.related_widget.current_faces['names'] = ['Unpaired' for i in range(len(target_face_encodings))]
-            self.related_widget.current_faces['scores'] = [10.0 for i in range(len(target_face_encodings))]
+            self.related_widget.current_faces['scores'] = [1.0 for i in range(len(target_face_encodings))]
 
         '''
         if len(paired_face):
-            self.related_widget.line1.setText(paired_face[0])
+            self.related_widget.ui.line1.setText(paired_face[0])
         else:
-            self.related_widget.line1.setText('Unpaired')
+            self.related_widget.ui.line1.setText('Unpaired')
         '''
 
         self.related_widget.update_results_signal.emit()
@@ -105,6 +109,7 @@ class showThread(QThread):
         current_faces_dict = self.related_widget.current_faces
         name_list = [face['name'] for face in self.related_widget.cache_faces]
         encoding_list = [face['encoding'] for face in self.related_widget.cache_faces]
+        sl_face = self.related_widget.selected_face
 
         for face_idx in range(len(current_faces_dict['names'])):
 
@@ -122,22 +127,29 @@ class showThread(QThread):
                 continue
             elif len(encoding_list):
                 dist = face_recognition.face_distance(cu_face['encoding'], encoding_list)
-                if dist.min() < 0.6:
+                if dist.min() < face_tolerance:
                     store_face_sig = False
 
             if store_face_sig:
                 self.related_widget.cache_faces.append(cu_face)
 
-        # self.related_widget.line2.setText('{} face'.format(len(self.related_widget.cache_faces)))
+        # self.related_widget.ui.line2.setText('{} face'.format(len(self.related_widget.cache_faces)))
 
         # kick out of queue
         for idx, face in enumerate(self.related_widget.cache_faces):
+            if sl_face != None and face['name'] == sl_face['name']:
+                print('pass: %s'%face['name'])
+                continue
             # time out
             if time.time() - face['time'] > 5.0:
                 self.related_widget.cache_faces.remove(self.related_widget.cache_faces[idx])
 
         while len(self.related_widget.cache_faces) > 4:
-            self.related_widget.cache_faces.remove(self.related_widget.cache_faces[0])
+            rm_idx = 0
+            if sl_face != None and self.related_widget.cache_faces[0]['encoding'].any() == sl_face['encoding'].any():
+                rm_idx = 1
+
+            self.related_widget.cache_faces.remove(self.related_widget.cache_faces[rm_idx])
 
         for idx, face in enumerate(self.related_widget.cache_faces):
             roi = cv2.resize(face['roi'], (100, 100))
