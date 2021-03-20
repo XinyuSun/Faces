@@ -7,6 +7,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from copy import deepcopy
 import face_recognition
 from multiprocessing import Process, Queue, Manager
+import multiprocessing as mp
 from PyQt5 import QtCore
 import time
 
@@ -15,7 +16,8 @@ face_tolerance = 0.45
 def detection(img_queue, det_queue, exit_signal_queue):
     while True:
         if exit_signal_queue.empty():
-            break
+            print('process exit')
+            return
         else:
             exit_signal_queue.get(block=False)
         
@@ -23,7 +25,8 @@ def detection(img_queue, det_queue, exit_signal_queue):
             cam_frame = img_queue.get()
             locs = face_recognition.face_locations(cam_frame)
             encodings = face_recognition.face_encodings(cam_frame, locs, 5, "large")
-            det_queue.put({'locs': locs, 'encodings': encodings})
+            rois = [cam_frame[t:b,l:r,:] for (t,r,b,l) in locs]
+            det_queue.put({'locs': locs, 'encodings': encodings, 'rois': deepcopy(rois)})
         else:
             cv2.waitKey(100)
 
@@ -68,12 +71,9 @@ class compareThread(QThread):
                     for encoding in data['encodings']:
                         saved_names.append(data['name'])
                         saved_encodings.append(encoding)
-
-            print(saved_names)
             
             for idx, encoding in enumerate(target_face_encodings):
                 scores = face_recognition.face_distance(saved_encodings, encoding)
-                print(scores)
                 pair_idx = np.argmin(scores)
                 pair_score = scores[pair_idx]
                 if pair_score >= face_tolerance:
@@ -118,7 +118,7 @@ class showThread(QThread):
             cu_face = {'name': current_faces_dict['names'][face_idx],
                        'loc': current_faces_dict['locs'][face_idx],
                        'encoding': current_faces_dict['encodings'][face_idx],
-                       'roi': deepcopy(self.related_widget.camera_thread.frame)[t:b,l:r,:],
+                       'roi': deepcopy(current_faces_dict['rois'][face_idx]),
                        'time': time.time()}
 
             store_face_sig = True
@@ -138,7 +138,7 @@ class showThread(QThread):
         # kick out of queue
         for idx, face in enumerate(self.related_widget.cache_faces):
             if sl_face != None and face['name'] == sl_face['name']:
-                print('pass: %s'%face['name'])
+                # print('pass: %s'%face['name'])
                 continue
             # time out
             if time.time() - face['time'] > 5.0:

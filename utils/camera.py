@@ -37,6 +37,7 @@ class cameraThread(QThread):
                 self.dets = self.det_queue.get()
                 self.related_widget.current_faces['locs'] = self.dets['locs']
                 self.related_widget.current_faces['encodings'] = self.dets['encodings']
+                self.related_widget.current_faces['rois'] = self.dets['rois']
                 self.related_widget.current_faces['names'] = ['None' for i in range(len(self.dets['locs']))]
                 self.related_widget.current_faces['scores'] = [1.0 for i in range(len(self.dets['locs']))]
                 self.related_widget.ui.line2.setText('{} face'.format(len(self.dets['locs'])))
