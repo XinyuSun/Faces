@@ -24,12 +24,15 @@ class Ui_Form(object):
         self.button2.setGeometry(QtCore.QRect(310, 265, 80, 30))
         self.button2.setObjectName("button2")
         self.progressBar = QtWidgets.QProgressBar(Form)
-        self.progressBar.setGeometry(QtCore.QRect(20, 30, 361, 31))
+        self.progressBar.setGeometry(QtCore.QRect(20, 240, 361, 31))
         self.progressBar.setProperty("value", 24)
         self.progressBar.setObjectName("progressBar")
         self.lineEdit = QtWidgets.QLineEdit(Form)
         self.lineEdit.setGeometry(QtCore.QRect(20, 20, 361, 21))
+        self.lineEdit.setText("")
+        self.lineEdit.setClearButtonEnabled(True)
         self.lineEdit.setObjectName("lineEdit")
+
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
@@ -38,4 +41,4 @@ class Ui_Form(object):
         Form.setWindowTitle(_translate("Form", "All Users"))
         self.button1.setText(_translate("Form", "remove"))
         self.button2.setText(_translate("Form", "save"))
-        self.lineEdit.setText(_translate("Form", "Search"))
+        self.lineEdit.setPlaceholderText(_translate("Form", "Search"))

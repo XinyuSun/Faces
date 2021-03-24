@@ -11,7 +11,7 @@ import multiprocessing as mp
 from PyQt5 import QtCore
 import time
 
-face_tolerance = 0.45
+face_tolerance = 0.42
 
 def detection(img_queue, det_queue, exit_signal_queue):
     while True:

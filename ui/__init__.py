@@ -16,6 +16,7 @@ from copy import deepcopy
 import pickle
 import hashlib
 import time
+import math
 
 
 def getHashCode(input: str) -> str:
@@ -95,7 +96,8 @@ class uiWindow(QMainWindow):
             encodings = [self.selected_face['encoding']]
             name = self.ui.line1.text()
             print('save: %s'%name)
-            savedict = {'name': name, 'encodings': encodings, 'roi': roi}
+            savedict = {'name': name, 'encodings': encodings, 'roi': roi,
+                        'time': time.strftime('%Y/%m/%d', time.localtime())}
             if not os.path.exists('./data'):
                 os.makedirs('./data')
             
@@ -143,6 +145,7 @@ class uiWindow(QMainWindow):
 
     def menuBarTriggered(self, action: QAction):
         if action.text() == '所有用户':
+            self.form1.loadSavedDatas()
             self.form1.updatePage(0)
             self.form1.show()
 
@@ -163,16 +166,19 @@ class uiForm(QWidget):
 
         self.total_pages = 1
         self.cur_page = 0
+        self.wheel_delta = 0.0
         self.units_in_page = 4
 
-        self.unit = [userUnit(self, 20, 70), userUnit(self, 210, 70), 
-                     userUnit(self, 20, 170), userUnit(self, 210, 170)]
+        self.units = [userUnit(self, 0, 20, 60), userUnit(self, 1, 210, 60), 
+                     userUnit(self, 2, 20, 160), userUnit(self, 3, 210, 160)]
 
         self.saved_pkls = None
         self.saved_users_names = None
         self.show_users_pkls = None
+        self.selected_unit_idx = None
 
         self.ui.lineEdit.textEdited[str].connect(self.searchUser)
+        self.ui.button1.clicked.connect(self.removeUser)
 
         self.loadSavedDatas()
         self.updatePage(0)
@@ -180,7 +186,7 @@ class uiForm(QWidget):
     def loadSavedDatas(self):
         self.saved_users_names = []
         self.saved_pkls = os.listdir('./data/')
-        self.total_pages = len(self.saved_pkls) // self.units_in_page + 1
+        self.total_pages = math.ceil(len(self.saved_pkls) / float(self.units_in_page))
 
         for pkl_file in self.saved_pkls:
             with open('./data/' + pkl_file, 'rb') as fo:
@@ -201,11 +207,11 @@ class uiForm(QWidget):
     def updatePage(self, page: int):
         saved_pkls = self.show_users_pkls
         start_idx = page * self.units_in_page
-        self.total_pages = len(saved_pkls) // self.units_in_page + 1
+        self.total_pages = math.ceil(len(self.saved_pkls) / float(self.units_in_page))
 
         unit = {}
 
-        if start_idx > len(saved_pkls) or page < 0:
+        if start_idx >= len(saved_pkls) or page < 0:
             return 1
 
         self.ui.progressBar.setMinimum(0)
@@ -214,28 +220,53 @@ class uiForm(QWidget):
 
         for idx in range(start_idx, start_idx + 4):
             if idx >= len(saved_pkls):
-                self.unit[idx % 4].hide()
+                self.units[idx % 4].hide()
                 continue
             with open('./data/' + saved_pkls[idx], 'rb') as fo:
                 data = pickle.load(fo)
                 unit = deepcopy(data)
 
-            self.unit[idx % 4].update(unit['name'], unit['roi'], '2021/3/19', 'SCUT')
+            self.units[idx % 4].update(unit['name'], unit['roi'], '2021/3/19', 'SCUT', idx)
         
         return 0
 
     def wheelEvent(self, event: QWheelEvent):
-        if event.angleDelta().y() > 0:
+        self.wheel_delta += (float(event.angleDelta().y()) / 50)
+
+        if int(self.wheel_delta) > 0:
             if self.updatePage(self.cur_page + 1) == 0:
                 self.cur_page += 1
-        elif event.angleDelta().y() < 0:
+            self.wheel_delta = 0.0
+
+        elif int(self.wheel_delta) < 0:
             if self.updatePage(self.cur_page - 1) == 0:
                 self.cur_page -= 1
-        # print('{}'.format(event.angleDelta())
+            self.wheel_delta = 0.0
+
+    def selectUnit(self, selected):
+        self.selected_unit_idx = selected
+
+        for idx, unit in enumerate(self.units):
+            if idx != selected:
+                unit.setSelected(False)
+
+    def removeUser(self):
+        ret = QMessageBox.warning(self, 'Warning', '确认删除', QMessageBox.Ok | QMessageBox.No)
+        if ret != QMessageBox.Ok:
+            return
+
+        if self.selected_unit_idx != None:
+            pkl_file_to_rm = self.saved_pkls[self.selected_unit_idx]
+            os.system('rm ./data/{}'.format(pkl_file_to_rm))
+        
+        self.loadSavedDatas()
+        self.updatePage(0)
 
 
 class userUnit(QWidget):
-    def __init__(self, form, x, y):
+    unitSelectedSignal = QtCore.pyqtSignal(int)
+
+    def __init__(self, form, idx, x, y):
         super().__init__(form)
         self.setGeometry(QtCore.QRect(x, y, 191, 81))
         self.setObjectName("widget")
@@ -269,20 +300,53 @@ class userUnit(QWidget):
         self.name.setText(self._translate("Form", "User 1"))
         self.profile.setText(self._translate("Form", "TextLabel"))
         self.remark.setText(self._translate("Form", "SCUT"))
-        
-        self.setStyleSheet("QWidget:hover{\n"
-        "    background-color: rgb(229, 241, 251);\n"
-        "    border:1px solid rgb(0, 120, 215);\n"
-        "}")
 
-    def update(self, name=None, profile=None, date=None, remark=None):
+        self.vl = QtWidgets.QFrame(self)
+        self.vl.setGeometry(QtCore.QRect(170, 10, 3, 61))
+        self.vl.setFrameShape(QtWidgets.QFrame.VLine)
+        self.vl.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.vl.setObjectName("vl")
+        self.vl.setStyleSheet("background-color: rgb(120, 195, 255);")
+        self.vl.hide()
+
+        self._isSelected = False
+        self.unitID = idx
+        self.userID = None
+
+        self.setMouseTracking(True)
+        self.unitSelectedSignal[int].connect(form.selectUnit)
+
+    def update(self, name=None, profile=None, date=None, remark=None, userid=None):
         self.date.setText(self._translate("Form", date))
         self.name.setText(self._translate("Form", name))
         self.remark.setText(self._translate("Form", remark))
+        self.userID = userid
+
         if profile is not None:
             img = cv2.resize(profile, (80, 80))
             h,w,d = img.shape
             qimg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             qimg = QImage(qimg.data, w, h, w*d, QImage.Format_RGB888)
             self.profile.setPixmap(QPixmap.fromImage(qimg))
+        
+        self.vl.hide()
+        self._isSelected = False
         self.show()
+
+    def mousePressEvent(self, event):
+        if self.isSelected():
+            self.setSelected(False)
+        else:
+            self.setSelected(True)
+            self.unitSelectedSignal.emit(self.userID)
+
+    def isSelected(self):
+        return self._isSelected
+
+    def setSelected(self, stat):
+        if stat:
+            self._isSelected = True
+            self.vl.show()
+        else:
+            self._isSelected = False
+            self.vl.hide()
