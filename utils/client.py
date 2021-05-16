@@ -1,6 +1,7 @@
 import pysftp
 import json
 import os
+from pathlib import Path
 
 class sftpServer(object):
     def __init__(self):
@@ -40,13 +41,15 @@ class sftpServer(object):
             print(f'missing files: {remote_files_missing} and {local_files_missing}')
             for rfm in remote_files_missing:
                 target = os.path.join(path, rfm)
-                self.send(target, target)
-            print(f"updated {len(remote_files_missing)} files")
+                self.send(target, Path.as_posix(Path(target)))
+            print(f"upload {len(remote_files_missing)} files")
 
             for lfm in local_files_missing:
                 target = os.path.join(path, lfm)
-                self.recv(target, target)
-            print(f"updated {len(local_files_missing)} files")
+                print(self.sftp.pwd)
+                self.recv(Path.as_posix(Path(target)), target)
+                print(target)
+            print(f"download {len(local_files_missing)} files")
 
 if __name__ == "__main__":
     server = sftpServer()
