@@ -10,6 +10,7 @@ from PyQt5.QtCore import QModelIndex
 from PyQt5 import QtCore, QtWidgets, QtGui
 from utils.camera import cameraThread
 from utils.face import detectionThread, compareThread, showThread
+from utils.client import sftpServer
 from ui.Ui_mainWindow import Ui_MainWindow
 from ui.Ui_formWindow import Ui_Form
 from copy import deepcopy
@@ -66,6 +67,9 @@ class uiWindow(QMainWindow):
         self.cache_faces = []
         self.selected_face = None
 
+        # sftp server
+        self.server = sftpServer()
+
         self.setStreamer(start=True)
         self.setMouseTracking(True)
         self.show()
@@ -105,6 +109,8 @@ class uiWindow(QMainWindow):
 
             with open(f'./data/{hash_name}.pkl', 'wb') as fo:
                 pickle.dump(savedict, fo)
+            
+            self.selected_face = None
 
     def compareFace(self):
         if not self.compare_thread.isRunning():
@@ -148,6 +154,8 @@ class uiWindow(QMainWindow):
             self.form1.loadSavedDatas()
             self.form1.updatePage(0)
             self.form1.show()
+        if action.text() == '同步服务器':
+            self.server.sync('data')
 
     def quit(self):
         self.setStreamer(False)

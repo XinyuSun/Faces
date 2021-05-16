@@ -305,6 +305,7 @@ QLabel:hover{
      <string>文件</string>
     </property>
     <addaction name="action1"/>
+    <addaction name="actionss"/>
    </widget>
    <widget class="QMenu" name="menu2">
     <property name="title">
@@ -323,6 +324,11 @@ QLabel:hover{
   <action name="action2">
    <property name="text">
     <string>退出</string>
+   </property>
+  </action>
+  <action name="actionss">
+   <property name="text">
+    <string>同步服务器</string>
    </property>
   </action>
  </widget>
