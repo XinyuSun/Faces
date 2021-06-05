@@ -25,8 +25,9 @@ def detection(img_queue, det_queue, exit_signal_queue):
             cam_frame = img_queue.get()
             locs = face_recognition.face_locations(cam_frame)
             encodings = face_recognition.face_encodings(cam_frame, locs, 5, "large")
+            landmarks = face_recognition.face_landmarks(cam_frame)
             rois = [cam_frame[t:b,l:r,:] for (t,r,b,l) in locs]
-            det_queue.put({'locs': locs, 'encodings': encodings, 'rois': deepcopy(rois)})
+            det_queue.put({'locs': locs, 'encodings': encodings, 'rois': deepcopy(rois), 'landmarks': landmarks})
         else:
             cv2.waitKey(100)
 
