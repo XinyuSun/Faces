@@ -1,4 +1,6 @@
 {
     "host": "47.119.112.64",
-    "user": "sxy"
+    "user": "sxy",
+    "key": "AAAAB3NzaC1yc2EAAAADAQABAAABgQCgcvPtnoWJwNJdjFGO1/2HdWT6ipgiHXfAK6O3uzuVdAAR7c81blicTsyIlulSeN1KStYic1FJayHxpVsXtvpoAc2RW+WDgU4FIshOSIqC6FARciwq2GTtk2iQDQM4miqypzQdegGYXn5UohldbTMEi6h+QxWNvN5fe6CyMfYS/lM9YQSyGw4FiET04mXvoWaeOdB7H0Ikl7Q3sVDYDzj4c5OBClvki+5eLGiUfwypA743JoJgTQAGUk0frvFZku9mp1rnNrUgtpclnl6RKj+2ZkPZVphdcPiKEL1ScLM0IW8237obyUnYwf+o/7UcHkp23S49KGSHBT7Z3uhk6ahqNBopRx47Ff7GfeVz+oWY4xUnDKO/pWK8Ps8fKXNC3ErPkGg0kTEU6nyFNzUzo602ZOkCrVS6s65JvV4X4bYIP2eix1sINDebQ4r1LcYReaCKtkqvXBp2UcQwEv977iDMTJJ0ZFVhIpMAEXCrtajwWkhPiYU690FeOP02lKlDcWM=",
+    "decode": "ssh-rsa"
 }

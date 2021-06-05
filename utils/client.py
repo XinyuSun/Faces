@@ -1,11 +1,16 @@
 import pysftp
 import json
 import os
+import paramiko
+from base64 import decodebytes
 
 class sftpServer(object):
     def __init__(self):
         cfg = json.load(open("config/server.json",'r'))
-        self.sftp = pysftp.Connection(cfg["host"], username=cfg["user"], password="4092")
+        key = paramiko.RSAKey(data=decodebytes(bytes(cfg["key"], encoding='utf-8')))
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys.add(cfg["host"], cfg["decode"], key)
+        self.sftp = pysftp.Connection(cfg["host"], username=cfg["user"], password="4092", cnopts=cnopts)
         self.root = "Projects/Face/container"
         self.sftp.cwd(self.root)
     
