@@ -10,10 +10,17 @@ from multiprocessing import Process, Queue, Manager
 import multiprocessing as mp
 from PyQt5 import QtCore
 import time
+from utils.pupil import detect_pupil
+from utils.eyenet import eyeNet
 
 face_tolerance = 0.42
 
 def detection(img_queue, det_queue, exit_signal_queue):
+    if os.path.exists('model_best.pth'):
+        model = eyeNet('model_best.pth')
+    else:
+        model = None
+
     while True:
         if exit_signal_queue.empty():
             print('process exit')
@@ -22,12 +29,21 @@ def detection(img_queue, det_queue, exit_signal_queue):
             exit_signal_queue.get(block=False)
         
         if not img_queue.empty():
+            tic = time.time()
             cam_frame = img_queue.get()
+
             locs = face_recognition.face_locations(cam_frame)
             encodings = face_recognition.face_encodings(cam_frame, locs, 5, "large")
             landmarks = face_recognition.face_landmarks(cam_frame)
+            eye_scores, eye_status = detect_pupil(model, cam_frame, landmarks)
+
             rois = [cam_frame[t:b,l:r,:] for (t,r,b,l) in locs]
-            det_queue.put({'locs': locs, 'encodings': encodings, 'rois': deepcopy(rois), 'landmarks': landmarks})
+            det_queue.put({'locs': locs, 'encodings': encodings, \
+                           'rois': deepcopy(rois), 'landmarks': landmarks, \
+                           'eye_scores': eye_scores, 'eye_status': eye_status})
+
+            toc = time.time() - tic
+            print(f'use time: {toc * 1000}ms')
         else:
             cv2.waitKey(100)
 
@@ -120,6 +136,8 @@ class showThread(QThread):
                        'loc': current_faces_dict['locs'][face_idx],
                        'encoding': current_faces_dict['encodings'][face_idx],
                        'roi': deepcopy(current_faces_dict['rois'][face_idx]),
+                       'eye_scores': current_faces_dict['eye_scores'][face_idx],
+                       'eye_status': current_faces_dict['eye_status'][face_idx],
                        'time': time.time()}
 
             store_face_sig = True
@@ -152,13 +170,25 @@ class showThread(QThread):
 
             self.related_widget.cache_faces.remove(self.related_widget.cache_faces[rm_idx])
 
+        # display face 
         for idx, face in enumerate(self.related_widget.cache_faces):
+            # get face roi
             roi = cv2.resize(face['roi'], (100, 100))
+            name_to_show = face['name']
+
+            # display score
+            cv2.putText(roi, ('%.2f'%face['eye_scores']), (5, 95), cv2.FONT_HERSHEY_COMPLEX, 0.5, (100,100,0), 2)
+            # draw out a box if eye closed
+            if face['eye_scores'] < 0.15 or np.all(face['eye_status'] == 0):
+                cv2.rectangle(roi, (0,0), (99,99), (40,40,255), 5)
+                name_to_show += '(走神)'
+
+            # show face
             w,h,d = roi.shape
             qimg = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
             qimg = QImage(qimg.data, w, h, w * d, QImage.Format_RGB888)
             self.related_widget.roiLabel[idx].setPixmap(QPixmap.fromImage(qimg))
-            self.related_widget.names[idx].setText(face['name'])
+            self.related_widget.names[idx].setText(name_to_show)
 
         # fill the label with png file
         for idx in range(len(self.related_widget.cache_faces), 4):
